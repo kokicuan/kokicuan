@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASETKU · Terminal Aset Pribadi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#0A0E17; --panel:#101623; --panel2:#0D1320; --line:#1E2A3E;
+  --text:#E8EDF5; --muted:#7A8699;
+  --green:#0ECB81; --red:#F6465D; --amber:#F0B90B; --blue:#3B82F6;
+  --mono:'JetBrains Mono',monospace; --disp:'Space Grotesk',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--disp); min-height:100vh;
+  background-image:
+    linear-gradient(rgba(30,42,62,.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,42,62,.25) 1px, transparent 1px);
+  background-size:44px 44px;
+}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 70px}
+
+/* ===== Ticker ===== */
+.tape{background:var(--panel2);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap;font-family:var(--mono);font-size:12.5px;padding:8px 0}
+.tape-inner{display:inline-block;animation:scroll 30s linear infinite}
+.tape-inner span{margin:0 22px;color:var(--muted)}
+.tape-inner b{color:var(--text);font-weight:500}
+.up{color:var(--green)!important}.down{color:var(--red)!important}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ===== Header ===== */
+header{padding:38px 0 8px;text-align:center}
+.logo{font-family:var(--mono);font-size:12px;letter-spacing:4px;color:var(--green);border:1px solid var(--green);display:inline-block;padding:4px 14px;border-radius:3px;margin-bottom:14px}
+h1{font-size:clamp(30px,6vw,46px);font-weight:700;letter-spacing:-1px}
+h1 .tick{color:var(--green)}
+.sub{color:var(--muted);margin-top:6px;font-size:15px}
+
+/* ===== Panels ===== */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-top:18px}
+.panel-head{display:flex;align-items:center;gap:8px;margin-bottom:16px;font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.panel-head::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+/* ===== Lock screen ===== */
+#lock{max-width:440px;margin:30px auto 0;text-align:center}
+#lock .icon{font-size:38px;margin-bottom:10px}
+#lock h2{font-size:22px;margin-bottom:6px}
+#lock p{color:var(--muted);font-size:14px;margin-bottom:18px;line-height:1.55}
+#lock input{text-align:center;font-family:var(--mono);letter-spacing:2px;font-size:16px}
+.lock-btns{display:flex;gap:10px;margin-top:12px}
+.lock-btns .btn{flex:1}
+#lock-msg{margin-top:14px;font-family:var(--mono);font-size:13px;min-height:20px}
+#lock-msg.err{color:var(--red)} #lock-msg.ok{color:var(--green)}
+
+/* ===== Form / tabel / hasil (sama seperti sebelumnya) ===== */
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.field{flex:2 1 170px}
+.field.small{flex:1 1 130px;display:flex;align-items:flex-end;gap:8px}
+label{display:block;font-size:11px;font-family:var(--mono);letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+input,select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:11px 12px;font-size:15px;font-family:var(--disp)}
+input:focus,select:focus{outline:none;border-color:var(--green)}
+input[inputmode=numeric]{font-family:var(--mono)}
+.btn{border:none;border-radius:6px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--disp);transition:filter .15s}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn-green{background:var(--green);color:#04120C}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn-big{width:100%;padding:14px;font-size:15px;margin-top:14px;font-family:var(--mono);letter-spacing:1px}
+.row{display:flex;align-items:center;gap:10px;padding:11px 8px;border-bottom:1px solid var(--line);font-size:14.5px}
+.row:last-of-type{border-bottom:none}
+.dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.row .name{flex:1;min-width:0}
+.row .name b{display:block}
+.tag{font-family:var(--mono);font-size:11px}
+.tag.hi{color:var(--red)}.tag.lo{color:var(--green)}
+.val{font-family:var(--mono);font-weight:500;white-space:nowrap}
+.mini{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--mono)}
+.mini:hover{color:var(--text);border-color:var(--muted)}
+.mini.del:hover{color:var(--red);border-color:var(--red)}
+#hasil{display:none;animation:naik .5s ease}
+@keyframes naik{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.hasil-grid{display:flex;flex-wrap:wrap;gap:24px;align-items:center}
+.chart-box{flex:1 1 260px;position:relative;max-width:340px;margin:0 auto}
+.chart-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.chart-center .lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted)}
+.chart-center .tot{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--green)}
+.legend{flex:1 1 280px}
+.leg-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;border-bottom:1px dashed var(--line)}
+.leg-row:last-child{border-bottom:none}
+.leg-row .nm{flex:1;font-weight:600}
+.leg-row .rp{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.leg-row .pc{font-family:var(--mono);font-weight:700;width:60px;text-align:right}
+.profil{margin-top:22px;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:8px;padding:16px;background:var(--panel2)}
+.badge{display:inline-block;font-family:var(--mono);font-weight:700;font-size:13px;padding:4px 14px;border-radius:4px;color:#04120C;letter-spacing:1px}
+.profil p{margin:10px 0 14px;line-height:1.6;color:#C7D0DE;font-size:14.5px}
+.meter{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.meter>div{height:100%;width:0;transition:width 1.2s ease;border-radius:5px}
+.skala{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.stat-line{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:10px}
+.riw{display:flex;align-items:center;gap:10px;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13.5px}
+.riw:last-child{border-bottom:none}
+.riw .tot{font-family:var(--mono);font-weight:700}
+.riw .tgl{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.riw .badge{font-size:11px;padding:3px 10px}
+.empty{text-align:center;color:var(--muted);padding:20px 0;font-size:14px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+#sync{font-family:var(--mono);font-size:12px}
+#sync.ok{color:var(--green)} #sync.err{color:var(--red)} #sync.busy{color:var(--amber)}
+
+/* ===== Chart trading hidup di header ===== */
+.live-wrap{position:relative;max-width:640px;margin:20px auto 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2)}
+.live-wrap canvas{display:block;width:100%;height:150px}
+.live-tag{position:absolute;top:8px;left:10px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted)}
+.live-price{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:12px;font-weight:700}
+
+/* ===== Animasi 3D saat scroll ===== */
+.reveal{opacity:0;transform:perspective(900px) rotateX(10deg) translateY(46px) scale(.97);transform-origin:top center;transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.show{opacity:1;transform:perspective(900px) rotateX(0) translateY(0) scale(1)}
+.tilt{transition:transform .15s ease; will-change:transform}
+
+/* ===== Riwayat bisa diklik ===== */
+.riw{cursor:pointer;transition:background .15s, transform .15s}
+.riw:hover{background:rgba(14,203,129,.06);transform:translateX(4px)}
+.riw .hint{font-family:var(--mono);font-size:10px;color:var(--muted);opacity:0;transition:opacity .15s}
+.riw:hover .hint{opacity:1}
+
+/* ===== Modal detail riwayat ===== */
+#modal{position:fixed;inset:0;background:rgba(4,7,13,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#modal.open{display:flex;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:22px;animation:pop .3s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{transform:perspective(700px) rotateX(12deg) scale(.9);opacity:0}to{transform:none;opacity:1}}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.modal-head h3{font-size:18px}
+.modal-tgl{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:16px}
+.modal-chart{position:relative;max-width:260px;margin:0 auto 16px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:560px){.row{flex-wrap:wrap}.val{width:100%;padding-left:20px}}
+</style>
+</head>
+<body>
+
+<div class="tape"><div class="tape-inner" id="tape"></div></div>
+
+<div class="wrap">
+<header>
+  <div class="logo">ASETKU · TERMINAL</div>
+  <h1>Portofolio<span class="tick">_</span>Kamu</h1>
+  <p class="sub">Catat aset, pantau alokasi, kenali profil risikomu — data terenkripsi &amp; tersimpan di domainmu sendiri.</p>
+  <div class="live-wrap">
+    <canvas id="live" width="640" height="150"></canvas>
+    <span class="live-tag">ASETKU/IDR · LIVE</span>
+    <span class="live-price" id="live-price">—</span>
+  </div>
+</header>
+
+<!-- ============ LAYAR KUNCI ============ -->
+<section class="panel" id="lock">
+  <div class="icon">🔐</div>
+  <h2>Masukkan Kode Rahasia</h2>
+  <p>Kode ini adalah kunci catatanmu. Kode benar → data muncul.<br>Kode tidak terdaftar → tidak ada apa-apa yang terbuka.</p>
+  <input id="kode" type="password" placeholder="••••••••" autocomplete="off">
+  <div class="lock-btns">
+    <button class="btn btn-green" id="btn-buka" onclick="buka()">🔓 Buka Catatan</button>
+    <button class="btn btn-ghost" id="btn-baru" onclick="buatBaru()">＋ Buat Baru</button>
+  </div>
+  <div id="lock-msg"></div>
+</section>
+
+<!-- ============ APLIKASI ============ -->
+<div id="app" style="display:none">
+
+<div class="topbar">
+  <span id="sync">● tersinkron</span>
+  <button class="mini" onclick="kunci()">🔒 KUNCI &amp; KELUAR</button>
+</div>
+
+<section class="panel">
+  <div class="panel-head" id="form-title">Tambah Aset</div>
+  <div class="grid">
+    <div class="field"><label for="nama">Nama aset</label>
+      <input id="nama" placeholder="cth: BBCA, Bitcoin, Tabungan"></div>
+    <div class="field"><label for="jenis">Jenis</label>
+      <select id="jenis"></select></div>
+    <div class="field"><label for="jumlah">Jumlah (Rp)</label>
+      <input id="jumlah" inputmode="numeric" placeholder="cth: 5.000.000"></div>
+    <div class="field small">
+      <button class="btn btn-green" id="btn-tambah" onclick="tambah()">Tambah</button>
+      <button class="btn btn-ghost" id="btn-batal" onclick="batalEdit()" style="display:none">Batal</button>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-list" style="display:none">
+  <div class="panel-head">Daftar Aset · <span id="count"></span></div>
+  <div id="list"></div>
+  <button class="btn btn-green btn-big" id="btn-simpan" onclick="simpan()">▶ SIMPAN ONLINE &amp; HITUNG ALOKASI</button>
+</section>
+
+<section class="panel" id="hasil">
+  <div class="panel-head">Alokasi Portofolio</div>
+  <div class="hasil-grid">
+    <div class="chart-box">
+      <canvas id="chart"></canvas>
+      <div class="chart-center"><div class="lbl">TOTAL</div><div class="tot" id="c-total"></div></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="profil" id="profil-box">
+    <span class="badge" id="p-badge"></span><span class="stat-line" id="p-stat"></span>
+    <p id="p-desc"></p>
+    <div class="meter"><div id="p-meter"></div></div>
+    <div class="skala"><span>KONSERVATIF ≤15%</span><span>MODERAT ≤40%</span><span>AGRESIF ≤70%</span><span>SPEKULATIF</span></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-riwayat" style="display:none">
+  <div class="panel-head">Riwayat Tersimpan</div>
+  <div id="riwayat"></div>
+</section>
+
+<p class="empty" id="empty">Belum ada aset. Tambahkan aset pertamamu di atas untuk mulai. ▲</p>
+</div><!-- /app -->
+</div>
+
+<!-- ============ MODAL DETAIL RIWAYAT ============ -->
+<div id="modal" onclick="if(event.target===this) tutupModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>📸 Snapshot Portofolio</h3>
+      <button class="mini del" onclick="tutupModal()">✕ TUTUP</button>
+    </div>
+    <div class="modal-tgl" id="m-tgl"></div>
+    <div class="modal-chart">
+      <canvas id="m-chart"></canvas>
+      <div class="chart-center"><div class="lbl">TOTAL</div><div class="tot" id="m-total"></div></div>
+    </div>
+    <div class="legend" id="m-legend"></div>
+    <div class="profil" id="m-profil" style="margin-top:16px">
+      <span class="badge" id="m-badge"></span><span class="stat-line" id="m-stat"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   VERSI DOMAIN SENDIRI — tanpa layanan luar.
+   Data disimpan sebagai file JSON terenkripsi di folder /data
+   melalui api.php di hosting cPanel-mu. Tidak ada yang perlu diisi.
+   ================================================================ */
+const API_URL = "api.php";
+
+/* ================= Konfigurasi Aset ================= */
+const JENIS = [
+  {id:'saham',     label:'Saham',                              risk:'high'},
+  {id:'crypto',    label:'Crypto',                             risk:'high'},
+  {id:'rdps',      label:'RDPS (Reksa Dana Saham)',            risk:'high'},
+  {id:'reksadana', label:'Reksa Dana (Pasar Uang / Obligasi)', risk:'low'},
+  {id:'bibit',     label:'Bibit',                              risk:'low'},
+  {id:'cash',      label:'Cash / Tabungan',                    risk:'low'},
+  {id:'emas',      label:'Emas',                               risk:'low'},
+];
+const WARNA = ['#0ECB81','#F0B90B','#3B82F6','#F6465D','#8B5CF6','#22D3EE','#F97316','#A3E635','#EC4899','#94A3B8'];
+const PROFIL = [
+  {nama:'KONSERVATIF',max:15, warna:'#0ECB81',desc:'Mayoritas asetmu berada di instrumen berisiko rendah. Nilai portofolio cenderung stabil — cocok untuk menjaga modal dan dana darurat.'},
+  {nama:'MODERAT',    max:40, warna:'#3B82F6',desc:'Porsi aset berisiko tinggi cukup terasa, tapi masih diimbangi aset aman. Keseimbangan antara pertumbuhan dan keamanan.'},
+  {nama:'AGRESIF',    max:70, warna:'#F0B90B',desc:'Sebagian besar portofolio berada di instrumen berisiko tinggi. Potensi cuan besar, tapi bersiaplah dengan fluktuasi tajam.'},
+  {nama:'SPEKULATIF', max:100,warna:'#F6465D',desc:'Hampir seluruh aset berada di instrumen berisiko tinggi. Potensi untung/rugi sangat ekstrem — pastikan dana daruratmu aman dulu.'},
+];
+const fmtRp = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0);
+const fmtN  = n => new Intl.NumberFormat('id-ID').format(n||0);
+const fmtTgl= d => new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+/* ================= State ================= */
+let aset=[], riwayat=[], editId=null, chart=null, kodeAktif=null;
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+/* ================= Kripto: kode → id & enkripsi ================= */
+async function sha256hex(str){
+  const h = await crypto.subtle.digest('SHA-256', enc.encode(str));
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function deriveKey(kode, salt){
+  const base = await crypto.subtle.importKey('raw', enc.encode(kode), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt, iterations:150000, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function unb64(s){ return Uint8Array.from(atob(s), c=>c.charCodeAt(0)); }
+
+async function encryptData(kode, obj){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(kode, salt);
+  const ct   = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(JSON.stringify(obj)));
+  return b64(salt) + '.' + b64(iv) + '.' + b64(ct);
+}
+async function decryptData(kode, packed){
+  const [s, i, c] = packed.split('.');
+  const key = await deriveKey(kode, unb64(s));
+  const pt  = await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(i)}, key, unb64(c));
+  return JSON.parse(dec.decode(pt));
+}
+
+/* ================= API domain sendiri (api.php) ================= */
+async function apiCall(payload){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if(!r.ok) throw new Error('Gagal terhubung ke server ('+r.status+')');
+  return r.json();
+}
+async function cloudGet(id){
+  const res = await apiCall({action:'get', id});
+  return res.data ?? null;
+}
+async function cloudPut(id, data){
+  const res = await apiCall({action:'put', id, data});
+  if(!res.ok) throw new Error('Gagal menyimpan ke server');
+}
+
+/* ================= Layar kunci ================= */
+function lockMsg(t, cls){ const m=$('lock-msg'); m.textContent=t; m.className=cls||''; }
+
+async function buka(){
+  const kode = $('kode').value;
+  if(kode.length < 6) return lockMsg('Kode minimal 6 karakter.','err');
+  setLockBusy(true); lockMsg('Memeriksa kode…','ok');
+  try{
+    const id = await sha256hex('asetku:'+kode);
+    const packed = await cloudGet(id);
+    if(packed === null){ lockMsg('✕ Kode tidak terdaftar. Tidak ada catatan yang terbuka.','err'); setLockBusy(false); return; }
+    const data = await decryptData(kode, packed);
+    aset = data.aset||[]; riwayat = data.riwayat||[]; kodeAktif = kode;
+    masukApp();
+  }catch(e){
+    lockMsg('✕ '+(e.message||'Kode salah atau data tidak bisa dibuka.'),'err');
+  }
+  setLockBusy(false);
+}
+
+async function buatBaru(){
+  const kode = $('kode').value;
+  if(kode.length < 6) return lockMsg('Buat kode minimal 6 karakter (makin panjang makin aman).','err');
+  setLockBusy(true); lockMsg('Menyiapkan catatan baru…','ok');
+  try{
+    const id = await sha256hex('asetku:'+kode);
+    const ada = await cloudGet(id);
+    if(ada !== null){ lockMsg('Kode ini sudah dipakai. Klik "Buka Catatan", atau pilih kode lain.','err'); setLockBusy(false); return; }
+    kodeAktif = kode; aset=[]; riwayat=[];
+    const packed = await encryptData(kode, {aset, riwayat});
+    await cloudPut(id, packed);
+    masukApp();
+  }catch(e){ lockMsg('✕ '+e.message,'err'); }
+  setLockBusy(false);
+}
+
+function setLockBusy(b){ $('btn-buka').disabled=b; $('btn-baru').disabled=b; }
+
+function masukApp(){
+  $('lock').style.display='none'; $('app').style.display='block';
+  $('kode').value='';
+  renderList(); renderTape(); renderRiwayat();
+  if(aset.length) renderHasil(hitung());
+  setSync('ok','● tersinkron');
+}
+function kunci(){
+  kodeAktif=null; aset=[]; riwayat=[]; editId=null;
+  if(chart){chart.destroy(); chart=null;}
+  $('app').style.display='none'; $('lock').style.display='block';
+  $('hasil').style.display='none'; lockMsg('Catatan terkunci. Sampai jumpa! 🔒','ok');
+  renderTape();
+}
+function setSync(cls, t){ const s=$('sync'); s.className=cls; s.textContent=t; }
+
+/* ================= Ticker ================= */
+function renderTape(){
+  let items;
+  if(aset.length){
+    items = aset.map(a=>{
+      const naik = a.jumlah % 2 === 0;
+      return `<span><b>${escapeHtml(a.nama).toUpperCase()}</b> ${fmtRp(a.jumlah)} <span class="${naik?'up':'down'}">${naik?'▲':'▼'}</span></span>`;
+    });
+  } else {
+    items = ['<span><b>ASETKU</b> <span class="up">▲ CLOUD &amp; TERENKRIPSI</span></span>',
+             '<span><b>KODE RAHASIA</b> = kunci datamu <span class="up">▲</span></span>',
+             '<span><b>AKSES</b> dari perangkat mana pun <span class="up">▲</span></span>'];
+  }
+  const s = items.join('');
+  $('tape').innerHTML = s + s;
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= CRUD ================= */
+$('jenis').innerHTML = JENIS.map(j=>`<option value="${j.id}">${j.label} — risiko ${j.risk==='high'?'tinggi':'rendah'}</option>`).join('');
+$('jumlah').addEventListener('input', e=>{ const d=e.target.value.replace(/[^\d]/g,''); e.target.value = d?fmtN(parseInt(d,10)):''; });
+$('jumlah').addEventListener('keydown', e=>{ if(e.key==='Enter') tambah(); });
+$('kode').addEventListener('keydown', e=>{ if(e.key==='Enter') buka(); });
+
+function tambah(){
+  const nama = $('nama').value.trim();
+  const jenis = $('jenis').value;
+  const nilai = parseInt($('jumlah').value.replace(/[^\d]/g,''),10);
+  if(!nama || !nilai) return;
+  if(editId){
+    aset = aset.map(a=>a.id===editId?{...a,nama,jenis,jumlah:nilai}:a); batalEdit();
+  } else {
+    aset.push({id:Date.now().toString(36),nama,jenis,jumlah:nilai});
+  }
+  $('nama').value=''; $('jumlah').value='';
+  renderList(); renderTape();
+  setSync('busy','● ada perubahan belum disimpan');
+}
+function mulaiEdit(id){
+  const a = aset.find(x=>x.id===id); if(!a) return;
+  editId=id; $('nama').value=a.nama; $('jenis').value=a.jenis; $('jumlah').value=fmtN(a.jumlah);
+  $('btn-tambah').textContent='Perbarui'; $('btn-batal').style.display='inline-block';
+  $('form-title').textContent='Ubah Aset';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function batalEdit(){
+  editId=null; $('nama').value=''; $('jumlah').value='';
+  $('btn-tambah').textContent='Tambah'; $('btn-batal').style.display='none';
+  $('form-title').textContent='Tambah Aset';
+}
+function hapus(id){
+  aset = aset.filter(a=>a.id!==id);
+  if(editId===id) batalEdit();
+  renderList(); renderTape();
+  setSync('busy','● ada perubahan belum disimpan');
+}
+function renderList(){
+  $('empty').style.display = aset.length?'none':'block';
+  $('panel-list').style.display = aset.length?'block':'none';
+  $('count').textContent = aset.length+' item';
+  $('list').innerHTML = aset.map((a,i)=>{
+    const j = JENIS.find(x=>x.id===a.jenis);
+    return `<div class="row">
+      <span class="dot" style="background:${WARNA[i%WARNA.length]}"></span>
+      <div class="name"><b>${escapeHtml(a.nama)}</b>
+        <span class="tag ${j.risk==='high'?'hi':'lo'}">${j.label} · RISIKO ${j.risk==='high'?'TINGGI':'RENDAH'}</span></div>
+      <span class="val">${fmtRp(a.jumlah)}</span>
+      <button class="mini" onclick="mulaiEdit('${a.id}')">EDIT</button>
+      <button class="mini del" onclick="hapus('${a.id}')">HAPUS</button>
+    </div>`;
+  }).join('');
+}
+
+/* ================= Simpan online & hitung ================= */
+function hitung(){
+  const total = aset.reduce((s,a)=>s+a.jumlah,0);
+  const high  = aset.filter(a=>JENIS.find(j=>j.id===a.jenis).risk==='high').reduce((s,a)=>s+a.jumlah,0);
+  const pct   = total?(high/total)*100:0;
+  return {total, high, pct, profil: PROFIL.find(p=>pct<=p.max)||PROFIL[PROFIL.length-1]};
+}
+
+async function simpan(){
+  if(!aset.length || !kodeAktif) return;
+  const h = hitung();
+  riwayat.unshift({id:Date.now().toString(36),tanggal:new Date().toISOString(),
+    total:h.total,jumlahAset:aset.length,profil:h.profil.nama,pctHigh:Math.round(h.pct),
+    aset: aset.map(a=>({nama:a.nama, jenis:a.jenis, jumlah:a.jumlah}))}); // rincian lengkap utk snapshot
+
+  $('btn-simpan').disabled = true;
+  setSync('busy','● menyimpan ke cloud…');
+  try{
+    const id = await sha256hex('asetku:'+kodeAktif);
+    const packed = await encryptData(kodeAktif, {aset, riwayat});
+    await cloudPut(id, packed);
+    setSync('ok','● tersinkron · '+new Date().toLocaleTimeString('id-ID'));
+  }catch(e){
+    setSync('err','● gagal menyimpan — cek koneksi lalu klik simpan lagi');
+  }
+  $('btn-simpan').disabled = false;
+
+  renderHasil(h); renderRiwayat();
+  $('hasil').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function renderHasil(h){
+  $('hasil').style.display='block';
+  $('c-total').textContent = fmtRp(h.total);
+  const labels = aset.map(a=>a.nama), data = aset.map(a=>a.jumlah);
+  const colors = aset.map((_,i)=>WARNA[i%WARNA.length]);
+  if(chart) chart.destroy();
+  chart = new Chart($('chart'), {
+    type:'doughnut',
+    data:{labels, datasets:[{data, backgroundColor:colors, borderColor:'#101623', borderWidth:3, hoverOffset:8}]},
+    options:{cutout:'62%', animation:{animateRotate:true,duration:1300,easing:'easeOutQuart'},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#0D1320',borderColor:'#1E2A3E',borderWidth:1,
+          titleFont:{family:'JetBrains Mono'},bodyFont:{family:'JetBrains Mono'},
+          callbacks:{label:c=>` ${fmtRp(c.raw)} (${(c.raw/h.total*100).toFixed(1)}%)`}}}}
+  });
+  $('legend').innerHTML = aset.map((a,i)=>`
+    <div class="leg-row">
+      <span class="dot" style="background:${WARNA[i%WARNA.length]}"></span>
+      <span class="nm">${escapeHtml(a.nama)}</span>
+      <span class="rp">${fmtRp(a.jumlah)}</span>
+      <span class="pc" style="color:${WARNA[i%WARNA.length]}">${(a.jumlah/h.total*100).toFixed(1)}%</span>
+    </div>`).join('');
+  const p = h.profil;
+  $('p-badge').textContent=p.nama; $('p-badge').style.background=p.warna;
+  $('p-desc').textContent=p.desc;
+  $('p-stat').textContent=`${Math.round(h.pct)}% RISIKO TINGGI · ${Math.round(100-h.pct)}% RISIKO RENDAH`;
+  $('profil-box').style.borderLeftColor=p.warna;
+  const m=$('p-meter'); m.style.background=p.warna; m.style.width='0';
+  setTimeout(()=>{m.style.width=h.pct+'%';},80);
+}
+
+/* ================= Riwayat ================= */
+async function hapusRiwayat(id){
+  riwayat = riwayat.filter(r=>r.id!==id);
+  renderRiwayat();
+  try{
+    const vid = await sha256hex('asetku:'+kodeAktif);
+    await cloudPut(vid, await encryptData(kodeAktif,{aset,riwayat}));
+  }catch(e){ setSync('err','● gagal sinkron riwayat'); }
+}
+function renderRiwayat(){
+  $('panel-riwayat').style.display = riwayat.length?'block':'none';
+  $('riwayat').innerHTML = riwayat.map(r=>{
+    const p = PROFIL.find(x=>x.nama===r.profil)||PROFIL[0];
+    return `<div class="riw" onclick="lihatRiwayat('${r.id}')" title="Klik untuk lihat detail alokasi">
+      <div style="flex:1;min-width:0">
+        <div class="tot">${fmtRp(r.total)} <span class="hint">▸ KLIK UNTUK DETAIL</span></div>
+        <div class="tgl">${fmtTgl(r.tanggal)} · ${r.jumlahAset} aset · ${r.pctHigh}% risiko tinggi</div>
+      </div>
+      <span class="badge" style="background:${p.warna}">${r.profil}</span>
+      <button class="mini del" onclick="event.stopPropagation(); hapusRiwayat('${r.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+/* ================= Modal detail snapshot ================= */
+let mChart = null;
+function lihatRiwayat(id){
+  const r = riwayat.find(x=>x.id===id); if(!r) return;
+  $('m-tgl').textContent = 'Disimpan: ' + fmtTgl(r.tanggal);
+  $('m-total').textContent = fmtRp(r.total);
+  const p = PROFIL.find(x=>x.nama===r.profil)||PROFIL[0];
+  $('m-badge').textContent = r.profil; $('m-badge').style.background = p.warna;
+  $('m-stat').textContent = `${r.pctHigh}% RISIKO TINGGI · ${100-r.pctHigh}% RISIKO RENDAH`;
+  $('m-profil').style.borderLeftColor = p.warna;
+
+  if(mChart){ mChart.destroy(); mChart = null; }
+  if(r.aset && r.aset.length){
+    const colors = r.aset.map((_,i)=>WARNA[i%WARNA.length]);
+    mChart = new Chart($('m-chart'), {
+      type:'doughnut',
+      data:{labels:r.aset.map(a=>a.nama),
+        datasets:[{data:r.aset.map(a=>a.jumlah), backgroundColor:colors, borderColor:'#101623', borderWidth:3, hoverOffset:6}]},
+      options:{cutout:'62%', animation:{animateRotate:true,duration:900,easing:'easeOutQuart'},
+        plugins:{legend:{display:false},
+          tooltip:{backgroundColor:'#0D1320',borderColor:'#1E2A3E',borderWidth:1,
+            titleFont:{family:'JetBrains Mono'},bodyFont:{family:'JetBrains Mono'},
+            callbacks:{label:c=>` ${fmtRp(c.raw)} (${(c.raw/r.total*100).toFixed(1)}%)`}}}}
+    });
+    $('m-legend').innerHTML = r.aset.map((a,i)=>{
+      const j = JENIS.find(x=>x.id===a.jenis);
+      return `<div class="leg-row">
+        <span class="dot" style="background:${WARNA[i%WARNA.length]}"></span>
+        <span class="nm">${escapeHtml(a.nama)} <span class="tag ${j&&j.risk==='high'?'hi':'lo'}">${j?j.label:''}</span></span>
+        <span class="rp">${fmtRp(a.jumlah)}</span>
+        <span class="pc" style="color:${WARNA[i%WARNA.length]}">${(a.jumlah/r.total*100).toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+  } else {
+    $('m-legend').innerHTML = '<p style="color:var(--muted);font-size:13.5px;text-align:center;padding:10px 0">Snapshot ini dibuat sebelum fitur rincian ada, jadi hanya ringkasannya yang tersimpan.</p>';
+  }
+  $('modal').classList.add('open');
+}
+function tutupModal(){
+  $('modal').classList.remove('open');
+  if(mChart){ mChart.destroy(); mChart = null; }
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') tutupModal(); });
+
+/* ================= Boot ================= */
+renderTape();
+
+/* ================= ANIMASI ================= */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* --- 1. Chart trading hidup (candlestick berjalan) --- */
+(function liveChart(){
+  const cv = $('live'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, CW = 10, GAP = 4, N = Math.floor(W/(CW+GAP))+2;
+  let price = 100, candles = [];
+  function newCandle(){
+    const open = price;
+    const move = (Math.random()-0.48) * 6;
+    const close = Math.max(20, open + move);
+    const hi = Math.max(open,close) + Math.random()*3;
+    const lo = Math.min(open,close) - Math.random()*3;
+    price = close;
+    return {open, close, hi, lo, prog:0};
+  }
+  for(let i=0;i<N;i++){ const c=newCandle(); c.prog=1; candles.push(c); }
+  let offset = 0;
+  function y(v, min, max){ return H - ((v-min)/(max-min)) * (H-30) - 15; }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    let min=Infinity, max=-Infinity;
+    candles.forEach(c=>{ min=Math.min(min,c.lo); max=Math.max(max,c.hi); });
+    if(max-min<1){max=min+1;}
+    // garis grid halus
+    ctx.strokeStyle='rgba(30,42,62,.6)'; ctx.lineWidth=1;
+    for(let gy=15; gy<H; gy+=30){ ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke(); }
+    candles.forEach((c,i)=>{
+      const x = i*(CW+GAP) - offset;
+      const up = c.close >= c.open;
+      const col = up ? '#0ECB81' : '#F6465D';
+      const bodyTop = y(Math.max(c.open,c.close),min,max);
+      const bodyBot = y(Math.min(c.open,c.close),min,max);
+      const h = Math.max(2,(bodyBot-bodyTop)) * (c.prog);
+      ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x+CW/2, y(c.hi,min,max)); ctx.lineTo(x+CW/2, y(c.lo,min,max)); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.fillRect(x, bodyTop + (bodyBot-bodyTop-h)/2, CW, h);
+    });
+    const last = candles[candles.length-1];
+    const lp = $('live-price');
+    lp.textContent = 'Rp ' + fmtN(Math.round(last.close*1000));
+    lp.style.color = last.close>=last.open ? 'var(--green)' : 'var(--red)';
+  }
+  if(reduceMotion){ draw(); return; }
+  let lastTime = 0;
+  function loop(t){
+    if(t - lastTime > 40){
+      lastTime = t;
+      offset += 0.5;
+      const c = candles[candles.length-1];
+      if(c.prog < 1) c.prog = Math.min(1, c.prog + 0.08);
+      if(offset >= CW+GAP){ offset = 0; candles.shift(); candles.push(newCandle()); }
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+
+/* --- 2. Panel muncul dengan efek 3D saat di-scroll --- */
+document.querySelectorAll('.panel').forEach(p=>p.classList.add('reveal'));
+if(reduceMotion){
+  document.querySelectorAll('.reveal').forEach(p=>p.classList.add('show'));
+} else {
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('show'); });
+  }, {threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(p=>io.observe(p));
+  // pastikan panel yang muncul belakangan (hasil/riwayat) juga terpantau
+  new MutationObserver(()=>{
+    document.querySelectorAll('.panel:not(.reveal)').forEach(p=>{p.classList.add('reveal'); io.observe(p);});
+  }).observe(document.body,{subtree:true, childList:true});
+}
+
+/* --- 3. Parallax latar grid saat scroll --- */
+if(!reduceMotion){
+  let ticking=false;
+  window.addEventListener('scroll', ()=>{
+    if(ticking) return; ticking=true;
+    requestAnimationFrame(()=>{
+      document.body.style.backgroundPosition = `0 ${window.scrollY*-0.15}px, ${window.scrollY*-0.1}px 0`;
+      ticking=false;
+    });
+  }, {passive:true});
+}
+
+/* --- 4. Efek tilt 3D pada diagram saat mouse bergerak --- */
+if(!reduceMotion && matchMedia('(pointer:fine)').matches){
+  const box = document.querySelector('#hasil .chart-box');
+  if(box){
+    box.classList.add('tilt');
+    box.addEventListener('mousemove', e=>{
+      const r = box.getBoundingClientRect();
+      const rx = ((e.clientY - r.top)/r.height - .5) * -14;
+      const ry = ((e.clientX - r.left)/r.width - .5) * 14;
+      box.style.transform = `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.03)`;
+    });
+    box.addEventListener('mouseleave', ()=>{ box.style.transform=''; });
+  }
+}
+</script>
+</body>
+</html>
